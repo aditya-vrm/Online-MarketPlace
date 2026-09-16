@@ -10,5 +10,7 @@ router.post('/register', validator.registerUserValidations, validator.responseWi
 router.post('/login', validator.loginUserValidations, validator.responseWithValidationErrors, authController.loginUser);
 // Get current user route with authentication middleware
 router.get('/me', authMiddleware, authController.getCurrentUser);
+// Logout route with authentication middleware
+router.post('/logout', authMiddleware, authController.logoutUser);
 
 module.exports = router;
