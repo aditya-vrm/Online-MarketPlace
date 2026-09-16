@@ -34,6 +34,23 @@ const registerUserValidations = [
     .notEmpty().withMessage("lastname is required"),
 ];
 
+const loginUserValidations = [
+  body("email")
+  .optional()
+    .isEmail()
+    .withMessage("email must be valid"),
+    body("username")
+    .optional()
+    .isString()
+    .withMessage("username must be a string"),
+  body("password")
+    .isString()
+    .withMessage("password must be a string"),
+];
 
 
-module.exports = { registerUserValidations, responseWithValidationErrors };
+module.exports = {
+  registerUserValidations,
+  loginUserValidations,
+  responseWithValidationErrors,
+};

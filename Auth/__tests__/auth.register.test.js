@@ -20,12 +20,15 @@ describe('POST /api/auth/register', () => {
 
         expect(response.status).toBe(201);
         expect(response.body).toMatchObject({
-            username: 'new-user',
-            email: 'new-user@example.com',
-            role: 'user',
-            fullname: {
-                firstname: 'New',
-                lastname: 'User',
+            message: 'User registered successfully',
+            user: {
+                username: 'new-user',
+                email: 'new-user@example.com',
+                role: 'user',
+                fullname: {
+                    firstname: 'New',
+                    lastname: 'User',
+                },
             },
         });
         expect(response.body).not.toHaveProperty('password');
