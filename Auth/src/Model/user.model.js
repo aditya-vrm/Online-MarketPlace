@@ -13,8 +13,17 @@ const AddressSchema=new mongoose.Schema({
     country:{
         type:String,
     },
-    zipCode:{
+    pincode:{
         type:String,
+        required:true,
+    },
+    phone:{
+        type:String,
+        required:true,
+    },
+    isDefault:{
+        type:Boolean,
+        default:false
     }
 });
 
@@ -55,7 +64,7 @@ const userSchema=new mongoose.Schema({
         enum:['user','seller'],
         default:'user'
     },
-    address: AddressSchema,
+    addresses: [AddressSchema],
 });
 
 const userModel=mongoose.model('user',userSchema);
