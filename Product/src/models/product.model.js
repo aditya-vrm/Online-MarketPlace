@@ -27,7 +27,11 @@ const productSchema=new mongoose.Schema({
         url:String,
         thumbnail:String,
         id:String
-    }]
+    }],
+    stock:{
+        type:Number,
+        required:true,
+    }
 });
 const Product=mongoose.model('product',productSchema);
 

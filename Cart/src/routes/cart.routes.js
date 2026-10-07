@@ -8,7 +8,7 @@ router.get('/', createMiddleware(['user']), cartController.getCart);
 
 router.post('/items', validate.validateAddItemToCart, createMiddleware(['user']), cartController.addItemToCart);
 
-router.patch('/items/:productId', validate.validateUpdateItemInCart, createMiddleware(['user']), cartController.updateItemInCart);
+router.patch('/items/:productId', validate.validateUpdateItemInCart, createMiddleware(['user']), cartController.updateItemQuantity);
 
 router.delete('/items/:productId', createMiddleware(['user']), cartController.deleteItemFromCart);
 

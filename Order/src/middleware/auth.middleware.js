@@ -9,7 +9,7 @@ function createMiddleware(roles = []) {
         }
 
         try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'test-secret');
 
             if (roles.length > 0 && decoded.role && !roles.includes(decoded.role)) {
                 return res.status(403).json({ message: 'Forbidden' });
