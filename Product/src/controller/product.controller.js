@@ -3,6 +3,8 @@ const ProductModel = require('../models/product.model');
 const {uploadImage} = require('../services/imagekit.service');
 const { invalidateProductCaches } = require('../services/cache.service');
 const { emitProductUpdated } = require('../services/product-events.service');
+const{publishToQueue}=require('../borker/borker');
+const { publish } = require('../../../Auth/src/db/redis');
 
 async function createProduct(req, res, next) {
 	try {
@@ -25,6 +27,9 @@ async function createProduct(req, res, next) {
         );
 
         const product = await ProductModel.create({ title, description, price, seller, image: images });
+        
+        await publishToQueue("PRODUCT_SELLER_DASHBOARD.PRODUCT_CREATED",product)
+        
         res.status(201).json({
             message: 'Product created successfully',
             data: product

@@ -15,6 +15,7 @@
   "type": "commonjs",
   "dependencies": {
     "@imagekit/nodejs": "^7.12.1",
+    "amqplib": "^2.2.0",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",

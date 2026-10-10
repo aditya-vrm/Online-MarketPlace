@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const orderModel = require('../models/order.model');
 const axios = require('axios');
+const{publishToQueue}=require('../borker/borker');
 
 async function createOrder(req, res) {
     const user = req.user;
@@ -114,6 +115,8 @@ async function createOrder(req, res) {
                 capturedAt: null,
             }
         });
+
+        await publishToQueue("ORDER_SELLER_DASHBOARD.ORDER_CREATED",order);
 
         if (typeof publishToQueue === 'function') {
             await publishToQueue('ORDER_SELLER_DASHBOARD.ORDER_CREATED', order);
