@@ -1,8 +1,9 @@
-const paymentModel = require('../models/payment.model');
-const axios = require('axios');
+const paymentModel = require("../models/payment.model");
+const { publishToQueue } = require("../borker/borker");
+const axios = require("axios");
 
-require('dotenv').config();
-const Razorpay = require('razorpay');
+require("dotenv").config();
+const Razorpay = require("razorpay");
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -10,71 +11,97 @@ const razorpay = new Razorpay({
 });
 
 async function createPayment(req, res) {
+  const token = req.cookies?.token || req.headers?.authorization?.split(" ")[1];
+  try {
+    const orderId = req.params.orderId;
+    const orderResponse = await axios.get(
+      `http://localhost:3003/api/orders/${orderId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+    const price = orderResponse.data.order.totalprice;
 
-    const token=req.cookies?.token || req.headers?.authorization?.split(' ')[1];
-    try{
-        const orderId=req.params.orderId;
-        const orderResponse=await axios.get(`http://localhost:3003/api/orders/${orderId}`,{
-            headers:{
-                Authorization:`Bearer ${token}`
-            }
-        })
-        const price=orderResponse.data.order.totalprice;
+    const order = await razorpay.orders.create(price);
 
-        const order=await razorpay.orders.create(price)
+    const payment = await paymentModel.create({
+      order: orderId,
+      razerpayOrderId: order.id,
+      user: req.user.id,
+      price: {
+        amount: price.amount,
+        currency: price.currency,
+      },
+    });
 
-        const payment=await paymentModel.create({
-            order:orderId,
-            razerpayOrderId:order.id,
-            user:req.user.id,
-            price:{
-                amount:price.amount,
-                currency:price.currency
-            }
-        })
-
-        return res.status(201).json({message:'Payment Created Successfully',payment})
-
-    }catch(err){return res.status(500).json({message:'Internal Server Error',err})}
+    return res
+      .status(201)
+      .json({ message: "Payment Created Successfully", payment });
+  } catch (err) {
+    return res.status(500).json({ message: "Internal Server Error", err });
+  }
 }
 
 async function verifyPayment(req, res) {
+  const { razorpayOrderId, signature, paymentId } = req.body;
+  const secret = process.env.RAZORPAY_KEY_SECRET;
 
-    const {razorpayOrderId, signature,paymentId}=req.body;
-    const secret = process.env.RAZORPAY_KEY_SECRET
+  try {
+    const {
+      validatePaymentVerification,
+    } = require("../../node_modules/razorpay/dist/utils/razorpay-utils");
 
-    try{
-        const { validatePaymentVerification } = require('../../node_modules/razorpay/dist/utils/razorpay-utils')
+    const isValid = validatePaymentVerification(
+      { order_id: razorpayOrderId, payment_id: paymentId },
+      signature,
+      secret,
+    );
 
-        const isValid = validatePaymentVerification(
-            { order_id: razorpayOrderId,
-             payment_id: paymentId },
-            signature,secret);
+    if (!isValid) {
+      return res.status(400).json({ message: "Invalid signature" });
+    }
 
-        if (!isValid) {
-            return res.status(400).json({ message: 'Invalid signature' });
-        }
+    const payment = await paymentModel.findOne({
+      razorpayOrderId,
+      status: "PENDING",
+    });
 
-        const payment=await paymentModel.findOne({razorpayOrderId,status:'PENDING'})
+    if (!payment) {
+      return res.status(404).json({ message: "Payment not found" });
+    }
 
-        if (!payment) {
-            return res.status(404).json({ message: 'Payment not found' });
-        }
+    payment.paymentId = paymentId;
+    payment.signature = signature;
+    payment.status = "COMPLETED";
 
-        payment.paymentId=paymentId;
-        payment.signature=signature;
-        payment.status='COMPLETED';
+    await payment.save();
 
-        await payment.save();
+    await publishToQueue("PAYMENT_NOTIFICATION.PAYMENT COMPLETED", {
+      email: req.user.email,
+      orderId: payment.order,
+      paymentId: payment.paymentId,
+      amount: payment.price.amount / 100,
+      currency: payment.price.currency,
+    });
 
-        return res.status(200).json({ message: 'Payment verified successfully', payment });
+    return res
+      .status(200)
+      .json({ message: "Payment verified successfully", payment });
+  } catch (err) {
 
-    }catch(err)
-    {return res.status(500).json({message:'Internal Server Error',err})}
+    await publishToQueue("PAYMENT_NOTIFICATION.PAYMENT FAILED", {
+      email: req.user.email,
+      paymentid:paymentId,
+      orderId:razorpayOrderId
+    });
+
+    return res.status(500).json({ message: "Internal Server Error", err });
+  }
 }
 
-
 module.exports = {
-    createPayment,
-    verifyPayment
+  createPayment,
+  verifyPayment,
 };

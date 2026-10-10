@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const userModel = require('../Model/user.model');
 const redis=require('../db/redis');
+const {publishToQueue}=require('../borker/borker');
 
 function serializeAddress(address) {
     const serializedAddress = address.toObject ? address.toObject() : { ...address };
@@ -26,6 +27,13 @@ async function registerUser(req, res) {
         fullname: { firstname, lastname },
         role: role || 'user',
     });
+
+    await publishToQueue('AUTH_NOTIFICATION.USER_CREATED',{
+        id:user._id,
+        username:user.username,
+        email:user.email,
+        fullname:user.fullname
+    })
 
     const token = jwt.sign({ 
         id: user._id,
